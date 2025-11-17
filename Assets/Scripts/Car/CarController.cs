@@ -10,15 +10,16 @@ public class CarController : MonoBehaviour
     [SerializeField] private Rigidbody carBody;
     [SerializeField] private Transform centerOfMass;
     [SerializeField] private FloatProvider speedDataChannel;
-    [SerializeField][Range(100f, 500f)] private float maxTorque = 200f;
+    [SerializeField] private CarEngine engine;
+    [SerializeField] private CarClutch clutch;
+    [SerializeField] private CarGearbox gearbox;
+    [SerializeField] private CarSmartDifferentials differentials;
     [SerializeField][Range(50f, 3000f)] private float maxBreakingTorque = 1000f;
     [SerializeField][Range(10f, 90f)] private float maxSteeringAngle = 45f;
     [SerializeField][CurveRange(0, 0, 400, 1)] private AnimationCurve steeringCurve;
     [SerializeField][CurveRange(0, 2, 250, 12)] private AnimationCurve steeringResponsivenessMult;
-    [SerializeField][Range(0f, 1f)] private float rearPowerBias = .75f;
     [Tooltip(".5 is 50/50, larger numbers bias braking towards the rear")]
     [SerializeField][Range(0f, 1f)] private float brakesBias = .5f;
-    private float throttleState = 0;
     private float brakesState = 0;
     //positive is right
     private float steeringInput = 0;
@@ -28,7 +29,7 @@ public class CarController : MonoBehaviour
 
     public void OnAccelerationInput(InputAction.CallbackContext context)
     {
-        throttleState = context.ReadValue<float>();
+        engine.SetThrottleInput(context.ReadValue<float>());
     }
 
     public void OnBrakingInput(InputAction.CallbackContext context)
@@ -39,6 +40,22 @@ public class CarController : MonoBehaviour
     public void OnSteeringInput(InputAction.CallbackContext context)
     {
         steeringInput = context.ReadValue<float>();
+    }
+
+    public void OnUpshiftInput(InputAction.CallbackContext context)
+    {
+        if (context.performed)
+        {
+            gearbox.UpShift();
+        }
+    }
+
+    public void OnDownshiftInput(InputAction.CallbackContext context)
+    {
+        if (context.performed)
+        {
+            gearbox.DownShift();
+        }
     }
 
     private void Start()
@@ -57,7 +74,12 @@ public class CarController : MonoBehaviour
         currentSpeedVector.y = 0;
         kphSpeed = currentSpeedVector.magnitude * MPS_TO_KPH;
 
-        float engineTorque = throttleState * maxTorque;
+        float gearboxRPM = differentials.GetAverageWheelRPM() * gearbox.GetCurrentGearRatio();
+        float updatedEngineRPM = clutch.GetUpdatedEngineRPM(engine.CurrentRPM, gearboxRPM);
+        engine.SetRPM(updatedEngineRPM);
+        Debug.Log("Engine RPM: " + updatedEngineRPM.ToString("0"), this);
+
+        float engineTorque = engine.GetCurrentTorqueOutput();
         float brakingTorque = brakesState * maxBreakingTorque;
         engineTorque /= (brakesState + 1f);
 
@@ -94,15 +116,9 @@ public class CarController : MonoBehaviour
 
     private void ApplyEngineTorqueToWheels(float engineTorque)
     {
-        float steering = (steeringInput + currentSteeringAngle / maxSteeringAngle) * .25f + .5f;
-        float leftSideBias = Mathf.Lerp(.8f, 1.2f, steering);
-        float rightSideBias = Mathf.Lerp(.8f, 1.2f, 1f - steering);
-
-        rearLeft.motorTorque = engineTorque * rearPowerBias * leftSideBias * (rearLeft.isGrounded ? 1 : .1f);
-        rearRight.motorTorque = engineTorque * rearPowerBias * rightSideBias * (rearRight.isGrounded ? 1 : .1f);
-
-        frontLeft.motorTorque = engineTorque * (1f - rearPowerBias) * leftSideBias * (frontLeft.isGrounded ? 1 : .1f);
-        frontRight.motorTorque = engineTorque * (1f - rearPowerBias) * rightSideBias * (frontRight.isGrounded ? 1 : .1f);
+        float gearboxInputTorque = clutch.GetGearboxInputTorque(engineTorque);
+        float gearboxOutputTorque = gearbox.GetOutputTorque(gearboxInputTorque);
+        differentials.ApplyTorqueToWheels(gearboxOutputTorque, currentSteeringAngle / maxSteeringAngle, steeringInput);
     }
 
     private void ApplyBrakingTorqueToWheels(float brakingTorque)

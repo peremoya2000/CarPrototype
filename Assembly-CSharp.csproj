@@ -58,11 +58,15 @@
     <Analyzer Include="C:\Program Files\Microsoft Visual Studio\2022\Community\Common7\IDE\Extensions\Microsoft\Visual Studio Tools for Unity\Analyzers\Microsoft.Unity.Analyzers.dll" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="Assets\Scripts\Car\VisualWheelUpdater.cs" />
-    <Compile Include="Assets\Scripts\Car\CarController.cs" />
     <Compile Include="Assets\Scripts\Camera\CameraPivotFollowTarget.cs" />
-    <Compile Include="Assets\Scripts\Camera\CameraLookatController.cs" />
+    <Compile Include="Assets\Scripts\Car\VisualWheelUpdater.cs" />
+    <Compile Include="Assets\Scripts\Car\CarGearbox.cs" />
+    <Compile Include="Assets\Scripts\Car\CarClutch.cs" />
+    <Compile Include="Assets\Scripts\Car\CarSmartDifferentials.cs" />
     <Compile Include="Assets\Scripts\UI\SpeedometerUI.cs" />
+    <Compile Include="Assets\Scripts\Car\CarEngine.cs" />
+    <Compile Include="Assets\Scripts\Car\CarController.cs" />
+    <Compile Include="Assets\Scripts\Camera\CameraLookatController.cs" />
     <Compile Include="Assets\Scripts\FloatProvider.cs" />
   </ItemGroup>
   <ItemGroup>
